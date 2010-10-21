@@ -147,7 +147,9 @@ lastPing = 0
 
 def handleOutgoing(msg):
 	global joined, lastPing
-	if msg.strip() == "/who":
+	msg = msg.strip()
+	if not msg: return
+	if msg == "/who":
 		roomUsers = getJson("/room/%s.json" % room)['room']['users']
 		chat.log("Users currently in the room: " + ", ".join(u['name'] for u in roomUsers))
 	else:
