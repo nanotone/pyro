@@ -179,7 +179,7 @@ def runNetwork():
 					if msgs: since = msgs[-1]["id"]
 					lastPing = time.time()
 				except urllib2.URLError as urlError:
-					if urlError.reason.errno == 60:
+					if urlError.reason.errno in (8, 54, 60):
 						chat.log("urllib2: %s" % urlError.reason)
 					else: raise
 			time.sleep(0.1)
