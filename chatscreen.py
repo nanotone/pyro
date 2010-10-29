@@ -67,7 +67,7 @@ class ChatScreen(object):
 		with self.cursesLock:
 			(y2, x2) = self.win2.getyx()
 			(y1, x1) = self.win1.getyx()
-			# probably fails if len(lines) > maxy
+			lines = lines[-maxy+1:] # would definitely fail if len(lines) >= maxy
 			nOverflow = y1 + len(lines) - maxy + 1
 			if nOverflow:
 				self.win1.move(0, 0)
