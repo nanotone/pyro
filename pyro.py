@@ -153,20 +153,21 @@ def handleOutgoing(msg):
 		roomUsers = getJson("/room/%s.json" % room)['room']['users']
 		chat.log("Users currently in the room: " + ", ".join(u['name'] for u in roomUsers))
 	else:
-		if not joined:
-			postJson("/room/%s/join.json" % room)
-			joined = True
+		if not joined: joinRoom()
 		postJson("/room/%s/speak.json" % room, {'message': {'body': msg}})
 	lastPing = 0 # force a ping
 
 
 def runNetwork():
+	chat.log("Joining room...")
+	joinRoom()
 	global done, lastPing
 	pingInterval = 3
 	since = 0
 	while True:
 		if done: return
 		try:
+			if time.time() - lastJoin > 180: joinRoom()
 			try: handleOutgoing(outbox.get(True, clamp(lastPing + pingInterval - time.time(), 0, 1)))
 			except Queue.Empty: pass
 			if lastPing + pingInterval < time.time():
@@ -178,8 +179,10 @@ def runNetwork():
 					for msg in msgs: handleMsg(msg, notify=since)
 					if msgs: since = msgs[-1]["id"]
 					lastPing = time.time()
+				except urllib2.HTTPError as httpError:
+					chat.log("urllib2: HTTP %d %s" % (httpError.code, httpError.msg))
 				except urllib2.URLError as urlError:
-					if urlError.reason.errno in (8, 54, 60):
+					if urlError.reason.errno in (8, 50, 54, 60):
 						chat.log("urllib2: %s" % urlError.reason)
 					else: raise
 			time.sleep(0.1)
@@ -187,14 +190,19 @@ def runNetwork():
 		except: chat.log(traceback.format_exc())
 	chat.stop()
 
+def joinRoom():
+	try:
+		postJson("/room/%s/join.json" % room)
+		global joined, lastJoin
+		joined = True
+		lastJoin = time.time()
+	except urllib2.URLError: pass
+
 def startNetwork():
 	chat.log("Getting room data...")
 	for user in getJson("/room/%s.json" % room)['room']['users']: saveUser(user)
 	chat.log("Users currently in the room: " + (", ").join(users.values()) )
-	chat.log("Joining room...")
-	postJson("/room/%s/join.json" % room)
-	global joined, runNetworkThread
-	joined = True
+	global runNetworkThread
 	import threading
 	runNetworkThread = threading.Thread(group=None, target=runNetwork, name="Network-thread")
 	runNetworkThread.start()
